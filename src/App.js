@@ -1,9 +1,13 @@
+// App.js
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import {
+  fetchProjects,
+  createProject,
+  deleteProject,
+} from "./services/projectService";
 import ProjectList from "./components/ProjectList";
 import ProjectForm from "./components/ProjectForm";
 import EditProjectPage from "./components/EditProjectPage";
-
 import "./App.css";
 
 const App = () => {
@@ -11,79 +15,79 @@ const App = () => {
   const [isFormVisible, setIsFormVisible] = useState(false); // Pour gérer la visibilité du formulaire
   const [editProject, setEditProject] = useState(null);
 
-  // Récupérer les projets automatiquement au démarrage
+  // Récupérer les projets au chargement du composant
   useEffect(() => {
-    fetchProjects();
-  }, []); // Ne s'exécute qu'une seule fois au montage du composant
+    loadProjects();
+  }, []);
 
-  // Fonction pour récupérer les projets depuis l'API
-  const fetchProjects = async () => {
+  // Fonction pour charger les projets via l'API
+  const loadProjects = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/projects"); // URL de l'API
-      setProjects(response.data); // Met à jour l'état avec les projets récupérés
+      const data = await fetchProjects();
+      setProjects(data);
     } catch (error) {
-      console.error("Erreur lors de la récupération des projets :", error);
+      console.error("Erreur lors du chargement des projets :", error);
     }
   };
 
-  // Fonction pour créer un projet
+  // Gérer la création d'un projet
   const handleCreate = async (project) => {
     try {
-      await axios.post("http://localhost:5000/projects", project); // Crée un nouveau projet
-      fetchProjects(); // Rafraîchit la liste des projets
-      setIsFormVisible(false); // Cache le formulaire après la création
+      await createProject(project);
+      loadProjects();
+      setIsFormVisible(false);
     } catch (error) {
       console.error("Erreur lors de la création du projet :", error);
     }
   };
 
-  // Fonction pour supprimer un projet
+  // Gérer la suppression d'un projet
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`http://localhost:5000/projects/${id}`); // Supprime le projet par ID
-      fetchProjects(); // Rafraîchit la liste des projets après suppression
+      await deleteProject(id);
+      loadProjects();
     } catch (error) {
       console.error("Erreur lors de la suppression du projet :", error);
     }
   };
 
-  //Fonction pour modifier un projet
+  // Gérer l'édition d'un projet
   const handleEdit = (project) => {
     setEditProject(project);
   };
 
   const handleSave = () => {
     setEditProject(null);
-    fetchProjects();
+    loadProjects();
   };
 
   return (
     <div className="App">
       <h1>ZM Rénovation - Gestion des Projets</h1>
 
-      {/* Vérifie si on est en mode édition */}
       {editProject ? (
         <EditProjectPage project={editProject} onSave={handleSave} />
       ) : (
         <>
-          {/* Bouton pour afficher ou masquer le formulaire */}
           <button onClick={() => setIsFormVisible(!isFormVisible)}>
             {isFormVisible ? "Masquer le formulaire" : "Créer un Nouveau Projet"}
           </button>
 
-          {/* Affichage du formulaire de création */}
           {isFormVisible && (
             <div className="project-form-container">
               <h2>Créer un Nouveau Projet</h2>
               <ProjectForm
-                onSubmit={handleCreate} // Gère la soumission du formulaire
-                onCancel={() => setIsFormVisible(false)} // Cache le formulaire
+                onSubmit={handleCreate}
+                onCancel={() => setIsFormVisible(false)}
               />
             </div>
           )}
 
-          {/* Affichage de la liste des projets */}
-          <ProjectList projects={projects} onDelete={handleDelete} onEdit={handleEdit} />
+          <ProjectList
+            projects={projects}
+            onDelete={handleDelete}
+            onEdit={handleEdit}
+          />
         </>
       )}
     </div>
