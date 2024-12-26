@@ -14,6 +14,16 @@ def get_projects():
     projects = Project.query.all()  # Requête pour récupérer tous les projets
     return jsonify([project.to_dict() for project in projects])  # Retourner les projets en format JSON
 
+# Route pour récupérer un projet spécifique
+@projects_bp.route('/projects/<int:id>', methods=['GET'])
+def get_project(id):
+    """
+    Récupère un projet spécifique par son ID.
+    """
+    project = Project.query.get(id)  # Recherche du projet par son ID
+    if project is None:
+        return jsonify({"error": "Projet non trouvé"}), 404  # Si le projet n'est pas trouvé, renvoyer une erreur
+    return jsonify(project.to_dict())  # Retourner le projet trouvé en format JSON
 
 # Route pour ajouter un nouveau projet
 @projects_bp.route('/projects', methods=['POST'])

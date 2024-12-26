@@ -2,6 +2,30 @@ body {
   font-family: Arial, sans-serif;
   margin: 20px;
 }
+/* App.css */
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background-color: #f4f4f4;
+  border-bottom: 1px solid #ddd;
+}
+
+.settings-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.settings-button:hover {
+  background-color: #0056b3;
+}
 
 h1 {
   color: #333;

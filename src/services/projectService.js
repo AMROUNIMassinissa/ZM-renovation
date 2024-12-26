@@ -12,7 +12,18 @@ const API_URL = "http://localhost:5000/projects";
 // Récupérer tous les projets
 export const fetchProjects = async () => {
   try {
-    const response = await axios.get(API_URL);
+    const response = await axios.get(`${API_URL}`);
+    return response.data;
+  } catch (error) {
+    console.error("Erreur lors de la récupération des projets :", error);
+    throw error;
+  }
+};
+// Récupérer un projet
+export const fetchProject = async (id) => {
+  try {
+    const response = await axios.get(`${API_URL}/${id}`);
+   // console.log("am here",response.data)
     return response.data;
   } catch (error) {
     console.error("Erreur lors de la récupération des projets :", error);

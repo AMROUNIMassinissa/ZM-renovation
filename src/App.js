@@ -1,26 +1,43 @@
-// App.js
 import React, { useState, useEffect } from "react";
-import {
-  fetchProjects,
-  createProject,
-  deleteProject,
-} from "./services/projectService";
+import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
+import { fetchProjects, createProject, deleteProject } from "./services/projectService";
 import ProjectList from "./components/ProjectList";
 import ProjectForm from "./components/ProjectForm";
 import EditProjectPage from "./components/EditProjectPage";
+import RegisterPage from "./Login/RegisterPage";
+import LoginPage from "./Login/LoginPage";
+import { auth } from "./services/firebase"; // Import Firebase Auth
+import { onAuthStateChanged } from "firebase/auth"; // Import onAuthStateChanged
 import "./App.css";
 
 const App = () => {
   const [projects, setProjects] = useState([]);
-  const [isFormVisible, setIsFormVisible] = useState(false); // Pour gérer la visibilité du formulaire
-  const [editProject, setEditProject] = useState(null);
+  const [isFormVisible, setIsFormVisible] = useState(false);
+  const [user, setUser] = useState(null); // État pour l'utilisateur connecté
+  const [loading, setLoading] = useState(true); // Pour gérer l'état de chargement de l'utilisateur
 
-  // Récupérer les projets au chargement du composant
+  // Vérifier si l'utilisateur est authentifié au montage du composant
   useEffect(() => {
-    loadProjects();
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser); // Si l'utilisateur est authentifié, mettez-le à jour dans l'état
+      } else {
+        setUser(null); // Sinon, réinitialisez l'état utilisateur
+      }
+      setLoading(false); // Une fois que la vérification est terminée, arrêtez le chargement
+    });
+
+    // Nettoyez l'abonnement à la fin
+    return () => unsubscribe();
   }, []);
 
-  // Fonction pour charger les projets via l'API
+  // Charger les projets si l'utilisateur est connecté
+  useEffect(() => {
+    if (user) {
+      loadProjects();
+    }
+  }, [user]);
+
   const loadProjects = async () => {
     try {
       const data = await fetchProjects();
@@ -30,7 +47,6 @@ const App = () => {
     }
   };
 
-  // Gérer la création d'un projet
   const handleCreate = async (project) => {
     try {
       await createProject(project);
@@ -41,7 +57,6 @@ const App = () => {
     }
   };
 
-  // Gérer la suppression d'un projet
   const handleDelete = async (id) => {
     try {
       await deleteProject(id);
@@ -51,45 +66,82 @@ const App = () => {
     }
   };
 
-  // Gérer l'édition d'un projet
-  const handleEdit = (project) => {
-    setEditProject(project);
+  const handleEdit = (projectId) => {
+    Navigate(`/edit/${projectId}`);
   };
 
-  const handleSave = () => {
-    setEditProject(null);
-    loadProjects();
+  // Gestion de la déconnexion
+  const handleLogout = () => {
+    setUser(null); // Réinitialiser l'utilisateur
+  };
+
+  // Composant pour protéger les routes
+  const ProtectedRoute = ({ element }) => {
+    if (loading) {
+      return <div>Chargement...</div>; // Afficher un écran de chargement tant que l'état de l'utilisateur est en cours de récupération
+    }
+
+    return user ? element : <Navigate to="/login" />;
   };
 
   return (
     <div className="App">
-      <h1>ZM Rénovation - Gestion des Projets</h1>
-
-      {editProject ? (
-        <EditProjectPage project={editProject} onSave={handleSave} />
-      ) : (
-        <>
-          <button onClick={() => setIsFormVisible(!isFormVisible)}>
-            {isFormVisible ? "Masquer le formulaire" : "Créer un Nouveau Projet"}
+      <header className="app-header">
+        <h1>ZM Rénovation - Gestion des Projets</h1>
+        {user && (
+          <button className="logout-button" onClick={handleLogout}>
+            Déconnexion
           </button>
+        )}
+      </header>
 
-          {isFormVisible && (
-            <div className="project-form-container">
-              <h2>Créer un Nouveau Projet</h2>
-              <ProjectForm
-                onSubmit={handleCreate}
-                onCancel={() => setIsFormVisible(false)}
-              />
-            </div>
-          )}
+      <Routes>
+        {/* Page de connexion */}
+        <Route path="/login" element={<LoginPage />} />
 
-          <ProjectList
-            projects={projects}
-            onDelete={handleDelete}
-            onEdit={handleEdit}
-          />
-        </>
-      )}
+        {/* Page d'inscription */}
+        <Route path="/register" element={<RegisterPage />} />
+
+        {/* Page principale (protégée) */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute
+              element={
+                <>
+                  <button onClick={() => setIsFormVisible(!isFormVisible)}>
+                    {isFormVisible
+                      ? "Masquer le formulaire"
+                      : "Créer un Nouveau Projet"}
+                  </button>
+
+                  {isFormVisible && (
+                    <div className="project-form-container">
+                      <h2>Créer un Nouveau Projet</h2>
+                      <ProjectForm
+                        onSubmit={handleCreate}
+                        onCancel={() => setIsFormVisible(false)}
+                      />
+                    </div>
+                  )}
+
+                  <ProjectList
+                    projects={projects}
+                    onDelete={handleDelete}
+                    onEdit={handleEdit}
+                  />
+                </>
+              }
+            />
+          }
+        />
+
+        {/* Page pour éditer un projet (protégée) */}
+        <Route
+          path="/edit/:id"
+          element={<ProtectedRoute element={<EditProjectPage onSave={loadProjects} />} />}
+        />
+      </Routes>
     </div>
   );
 };
