@@ -1,8 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../services/firebase"; // Assurez-vous que Firebase est bien configuré ici
+import axios from "axios"; // Pour appeler le backend
 import { useNavigate } from "react-router-dom";
 import "./LoginPage.css";
+import { UserContext } from "../contexts/UserContext";
 
 const LoginPage = () => {
   const [formData, setFormData] = useState({
@@ -12,6 +14,7 @@ const LoginPage = () => {
   const [error, setError] = useState("");
   const [validationMessage, setValidationMessage] = useState(""); // Nouveau state pour message de validation
   const navigate = useNavigate();
+  const { setUser } = useContext(UserContext); // Utilisation du contexte
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -27,19 +30,25 @@ const LoginPage = () => {
     setValidationMessage(""); // Réinitialiser le message de validation
 
     try {
+      // Authentification via Firebase
       const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
-      const user = userCredential.user;
+      const firebaseUser = userCredential.user;
 
       // Vérifier si l'utilisateur a validé son email
-      if (!user.emailVerified) {
-        // Si l'email n'est pas validé, on affiche un message
+      if (!firebaseUser.emailVerified) {
         setValidationMessage("Veuillez valider votre email pour continuer.");
-        await user.sendEmailVerification(); // Optionnel : Renvoyer l'email de validation
-        return; // Arrêter le processus de connexion si l'email n'est pas validé
+        await firebaseUser.sendEmailVerification(); // Renvoyer l'email de validation
+        return; // Arrêter le processus si email non vérifié
       }
 
-      // Si l'email est validé, rediriger vers la page principale
-      navigate("/");
+      // Appeler le backend pour récupérer l'utilisateur à partir du firebase_uid
+      const response = await axios.get(`http://localhost:5000/users/uid/${firebaseUser.uid}`);
+      const userData = response.data;
+
+      // Rediriger vers la page des projets de l'utilisateur
+      navigate(`/users/${userData.id}/projects`);
+      //setUser(userData)
+      window.location.reload();
     } catch (error) {
       console.error("Erreur lors de la connexion :", error.message);
       setError("Erreur : Email ou mot de passe incorrect.");

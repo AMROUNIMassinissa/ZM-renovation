@@ -5,12 +5,19 @@ import { BrowserRouter } from "react-router-dom";
 import App from './App';
 import RegisterPage from './Login/RegisterPage';
 import reportWebVitals from './reportWebVitals';
+import { UserProvider } from "./contexts/UserContext";
+<link
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+  rel="stylesheet"
+/>
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
+  <UserProvider>
   <BrowserRouter>
     <App />
-  </BrowserRouter>,
+  </BrowserRouter>
+  </UserProvider>,
     document.getElementById("root")
 
 );

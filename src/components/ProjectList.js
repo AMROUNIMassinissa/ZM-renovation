@@ -2,12 +2,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";  // Importation du hook useNavigate
 
-const ProjectList = ({ projects, onDelete }) => {
-  const navigate = useNavigate(); // Hook de navigation
-
-  const handleEdit = (projectId) => {
-    navigate(`/edit/${projectId}`);  // Redirige vers la page d'édition du projet
-  };
+const ProjectList = ({ projects, onDelete,onEdit }) => {
 
   return (
     <table>
@@ -38,7 +33,7 @@ const ProjectList = ({ projects, onDelete }) => {
             <td>{project.date_creation}</td>
             <td>{project.date_provisoire}</td>
             <td>
-              <button onClick={() => handleEdit(project.id)}>Modifier</button>
+              <button onClick={() => onEdit(project.id)}>Modifier</button>
               <button onClick={() => onDelete(project.id)}>Supprimer</button>
             </td>
           </tr>

@@ -1,46 +1,68 @@
 import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Route,
+  Routes,
+  Navigate,
+  useNavigate,
+  useLocation,
+} from "react-router-dom";
 import { fetchProjects, createProject, deleteProject } from "./services/projectService";
 import ProjectList from "./components/ProjectList";
 import ProjectForm from "./components/ProjectForm";
 import EditProjectPage from "./components/EditProjectPage";
 import RegisterPage from "./Login/RegisterPage";
 import LoginPage from "./Login/LoginPage";
-import { auth } from "./services/firebase"; // Import Firebase Auth
-import { onAuthStateChanged } from "firebase/auth"; // Import onAuthStateChanged
+import { auth } from "./services/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import axios from "axios";
 import "./App.css";
+import CompanySettingsPage from "./components/ComapanySettingsPage";
 
 const App = () => {
   const [projects, setProjects] = useState([]);
   const [isFormVisible, setIsFormVisible] = useState(false);
-  const [user, setUser] = useState(null); // État pour l'utilisateur connecté
-  const [loading, setLoading] = useState(true); // Pour gérer l'état de chargement de l'utilisateur
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState(null);
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  // Vérifier si l'utilisateur est authentifié au montage du composant
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
-        setUser(currentUser); // Si l'utilisateur est authentifié, mettez-le à jour dans l'état
+        try {
+          const response = await axios.get(`http://localhost:5000/users/uid/${currentUser.uid}`);
+          const userData = response.data;
+          setUserId(userData.id);
+          setUser(currentUser);
+
+          // Rediriger vers `/users/<id>/projects` si connecté
+          navigate(`/users/${userData.id}/projects`);
+        } catch (error) {
+          console.error("Erreur lors de la récupération des données utilisateur :", error);
+          setUser(null);
+        }
       } else {
-        setUser(null); // Sinon, réinitialisez l'état utilisateur
+        setUser(null);
       }
-      setLoading(false); // Une fois que la vérification est terminée, arrêtez le chargement
+      setLoading(false);
     });
 
-    // Nettoyez l'abonnement à la fin
     return () => unsubscribe();
   }, []);
 
-  // Charger les projets si l'utilisateur est connecté
   useEffect(() => {
-    if (user) {
+    if (userId) {
+      console.log(userId);
       loadProjects();
     }
-  }, [user]);
+  }, [userId]);
 
   const loadProjects = async () => {
     try {
-      const data = await fetchProjects();
+      console.log("Fetching projects for user: app", userId);
+      const data = await fetchProjects(userId);
       setProjects(data);
     } catch (error) {
       console.error("Erreur lors du chargement des projets :", error);
@@ -49,7 +71,8 @@ const App = () => {
 
   const handleCreate = async (project) => {
     try {
-      await createProject(project);
+      console.log("Creating project for user:", project);
+      await createProject(userId,project);
       loadProjects();
       setIsFormVisible(false);
     } catch (error) {
@@ -59,7 +82,7 @@ const App = () => {
 
   const handleDelete = async (id) => {
     try {
-      await deleteProject(id);
+      await deleteProject(userId,id);
       loadProjects();
     } catch (error) {
       console.error("Erreur lors de la suppression du projet :", error);
@@ -67,21 +90,34 @@ const App = () => {
   };
 
   const handleEdit = (projectId) => {
-    Navigate(`/edit/${projectId}`);
+    navigate(`users/${userId}/edit/${projectId}`);
   };
 
-  // Gestion de la déconnexion
   const handleLogout = () => {
-    setUser(null); // Réinitialiser l'utilisateur
+    auth
+      .signOut()
+      .then(() => {
+        setUser(null);
+        navigate("/login");
+      })
+      .catch((error) => {
+        console.error("Erreur lors de la déconnexion :", error);
+      });
   };
 
-  // Composant pour protéger les routes
   const ProtectedRoute = ({ element }) => {
     if (loading) {
-      return <div>Chargement...</div>; // Afficher un écran de chargement tant que l'état de l'utilisateur est en cours de récupération
+      return <div>Chargement...</div>;
     }
-
     return user ? element : <Navigate to="/login" />;
+  };
+
+  const handleNavigation = () => {
+    if (location.pathname === `/users/${userId}/settings`) {
+      navigate(`/users/${userId}/projects`);
+    } else {
+      navigate(`/users/${userId}/settings`);
+    }
   };
 
   return (
@@ -89,30 +125,45 @@ const App = () => {
       <header className="app-header">
         <h1>ZM Rénovation - Gestion des Projets</h1>
         {user && (
-          <button className="logout-button" onClick={handleLogout}>
-            Déconnexion
-          </button>
+          <div className="header-buttons">
+            <button className="settings-button" onClick={handleNavigation}>
+              {location.pathname === `/users/${userId}/settings` ? "Accueil" : "Paramètres"}
+            </button>
+            <button className="logout-button" onClick={handleLogout}>
+              Déconnexion
+            </button>
+          </div>
         )}
       </header>
 
       <Routes>
+        {/* Route principale */}
+        <Route
+          path="/"
+          element={user ? <Navigate to={`/users/${userId}/projects`} /> : <Navigate to="/login" />}
+        />
+
         {/* Page de connexion */}
         <Route path="/login" element={<LoginPage />} />
 
         {/* Page d'inscription */}
         <Route path="/register" element={<RegisterPage />} />
 
-        {/* Page principale (protégée) */}
+        {/* Page des paramètres (protégée) */}
         <Route
-          path="/"
+          path="/users/:id/settings"
+          element={<ProtectedRoute element={<CompanySettingsPage />} />}
+        />
+
+        {/* Page principale des projets (protégée) */}
+        <Route
+          path="/users/:id/projects"
           element={
             <ProtectedRoute
               element={
                 <>
                   <button onClick={() => setIsFormVisible(!isFormVisible)}>
-                    {isFormVisible
-                      ? "Masquer le formulaire"
-                      : "Créer un Nouveau Projet"}
+                    {isFormVisible ? "Masquer le formulaire" : "Créer un Nouveau Projet"}
                   </button>
 
                   {isFormVisible && (
@@ -138,8 +189,8 @@ const App = () => {
 
         {/* Page pour éditer un projet (protégée) */}
         <Route
-          path="/edit/:id"
-          element={<ProtectedRoute element={<EditProjectPage onSave={loadProjects} />} />}
+          path="/users/:user_id/edit/:id"
+          element={<ProtectedRoute element={<EditProjectPage onSave={loadProjects} userId={userId} />} />}
         />
       </Routes>
     </div>

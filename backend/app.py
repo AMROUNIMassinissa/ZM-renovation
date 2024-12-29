@@ -3,6 +3,7 @@ from flask_cors import CORS
 from models import db
 from projects.routes import projects_bp
 from articles.routes import articles_bp
+from users.routes import users_bp
 
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:3000"])
@@ -15,6 +16,7 @@ db.init_app(app)
 # Enregistrer les Blueprints
 app.register_blueprint(projects_bp)
 app.register_blueprint(articles_bp)
+app.register_blueprint(users_bp)
 
 if __name__ == '__main__':
     with app.app_context():

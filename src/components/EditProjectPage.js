@@ -1,11 +1,13 @@
 // EditProjectPage.js
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom"; // Importer useParams pour récupérer l'ID du projet
-import { fetchProject, saveProject } from "../services/projectService"; // Importer la fonction de récupération du projet
+import { useParams,useNavigate  } from "react-router-dom"; // Importer useParams pour récupérer l'ID du projet
+import { fetchProject, saveProject,updateProject } from "../services/projectService"; // Importer la fonction de récupération du projet
 import ArticlesTable from "./ArticlesTable";
 import { saveArticle, getArticles } from "../services/articleService";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faHome } from "@fortawesome/free-solid-svg-icons"; // Importer l'icône home
 
-const EditProjectPage = ({ onSave }) => {
+const EditProjectPage = ({ onSave,userId }) => {
   const { id } = useParams(); // Récupérer l'ID du projet depuis l'URL
   const [project, setProject] = useState(null); // État pour stocker les données du projet
   const [formData, setFormData] = useState({
@@ -20,13 +22,16 @@ const EditProjectPage = ({ onSave }) => {
   });
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);  // Indicateur de chargement
+  const navigate = useNavigate(); // Hook pour naviguer
+  const [isModified, setIsModified] = useState(false); // État pour suivre les modifications
 
   // Récupérer les données du projet et les articles associés via l'ID
   useEffect(() => {
     const fetchProjectAndArticles = async () => {
       try {
         // Récupérer les données du projet avec l'ID
-        const fetchedProject = await fetchProject(id); // Remplacez avec votre fonction pour récupérer un projet par son ID
+        console.log("Fetching project with ID:", userId,id);
+        const fetchedProject = await fetchProject(userId,id); // Remplacez avec votre fonction pour récupérer un projet par son ID
         setProject(fetchedProject);
 
         // Pré-remplir le formulaire avec les données du projet
@@ -58,7 +63,7 @@ const EditProjectPage = ({ onSave }) => {
 
   const handleSaveProject = async () => {
     try {
-      await saveProject(id, formData);
+      await updateProject(userId,id, formData);
       alert("Projet sauvegardé avec succès !");
       onSave(); // Appeler la fonction onSave après l'enregistrement du projet
     } catch (error) {
@@ -91,7 +96,19 @@ const EditProjectPage = ({ onSave }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    setIsModified(true); // Détecter une modification dans les articles
     setFormData({ ...formData, [name]: value });
+  };
+  const handleNavigateHome = () => {
+    if (isModified) {
+      const confirmSave = window.confirm(
+        "Vous avez des modifications non sauvegardées. Voulez-vous les sauvegarder avant de quitter ?"
+      );
+      if (confirmSave) {
+        handleSaveProject(); // Sauvegarder les modifications
+      }
+    }
+    navigate(`/users/${userId}/projects`); // Naviguer vers la page d'accueil
   };
 
   if (loading) return <p>Chargement...</p>;
@@ -103,7 +120,18 @@ const EditProjectPage = ({ onSave }) => {
 
   return (
     <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
       <h2>Modifier le Projet</h2>
+      <button
+    type="button"
+    onClick={handleNavigateHome}
+    style={{
+      cursor: "pointer",
+    }}
+  >
+    <FontAwesomeIcon icon={faHome} size="lg" /> {/* Utiliser l'icône ici */}
+  </button>
+      </div>
       <form>
         <input
           type="text"
@@ -163,7 +191,7 @@ const EditProjectPage = ({ onSave }) => {
           onChange={handleChange}
         />
       </form>
-      <button type="button" onClick={handleSaveProject}>
+      <button type="button" onClick={handleSaveProject} style={{display:"flex",  alignItems: "center",justifyContent: "center",backgroundColor: "green",color: "white",padding: "10px 20px",borderRadius: "5px",cursor: "pointer",marginTop: "10px"}}>
         Sauvegarder le Projet
       </button>
 

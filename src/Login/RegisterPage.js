@@ -2,15 +2,22 @@ import React, { useState } from "react";
 import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 import { auth } from "../services/firebase";
 import { useNavigate } from "react-router-dom";
+import axios from "axios"; // Pour faire des requêtes au backend
 import "./RegisterPage.css";
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
+    type: "physique", // "physique" ou "morale"
+    nom: "",
+    prenom: "",
+    denomination: "", // Pour les utilisateurs de type "morale"
+    telephone: "",
+    adresse: ""
   });
-  const [successModal, setSuccessModal] = useState(false); // État pour afficher/masquer le modal
-  const [error, setError] = useState(""); // Stocke les erreurs
+  const [successModal, setSuccessModal] = useState(false); // Modal de succès
+  const [error, setError] = useState(""); // Pour stocker les erreurs
   const navigate = useNavigate();
 
   const handleInputChange = (e) => {
@@ -26,17 +33,40 @@ const RegisterPage = () => {
     setError(""); // Réinitialise les erreurs
 
     try {
+      // Créer l'utilisateur avec Firebase
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         formData.email,
         formData.password
-      );
+      )
 
       // Envoi de l'email de vérification
       await sendEmailVerification(userCredential.user);
 
-      // Afficher le modal de succès
-      setSuccessModal(true);
+      const firebaseUid = userCredential.user.uid; // Récupérer l'UID Firebase
+      console.log("Firebase UID:", firebaseUid);
+
+      // Une fois l'utilisateur créé dans Firebase, envoyons les autres informations au backend
+      const userData = {
+        firebase_uid: firebaseUid,
+        email: formData.email,
+        password: formData.password,
+        type: formData.type,
+        nom: formData.nom,
+        prenom: formData.prenom,
+        denomination: formData.denomination,
+        telephone: formData.telephone,
+        adresse: formData.adresse
+      };
+
+      // Envoyer les données supplémentaires au backend
+      const response = await axios.post("http://localhost:5000/register", userData);
+
+      // Si l'inscription au backend est réussie
+      if (response.status === 201) {
+        // Afficher le modal de succès
+        setSuccessModal(true);
+      }
     } catch (error) {
       console.error("Erreur lors de l'inscription :", error.message);
       setError("Erreur : " + error.message);
@@ -66,6 +96,62 @@ const RegisterPage = () => {
           type="password"
           name="password"
           value={formData.password}
+          onChange={handleInputChange}
+          required
+        />
+
+        <label>Type d'utilisateur :</label>
+        <select
+          name="type"
+          value={formData.type}
+          onChange={handleInputChange}
+        >
+          <option value="physique">Personne physique</option>
+          <option value="morale">Personne morale</option>
+        </select>
+
+        <label>Nom :</label>
+        <input
+          type="text"
+          name="nom"
+          value={formData.nom}
+          onChange={handleInputChange}
+        />
+
+        <label>Prénom :</label>
+        <input
+          type="text"
+          name="prenom"
+          value={formData.prenom}
+          onChange={handleInputChange}
+        />
+
+        {formData.type === "morale" && (
+          <>
+            <label>Dénomination :</label>
+            <input
+              type="text"
+              name="denomination"
+              value={formData.denomination}
+              onChange={handleInputChange}
+            />
+          </>
+        )}
+
+        <label>Téléphone :</label>
+        <input
+          type="text"
+          name="telephone"
+          value={formData.telephone}
+          onChange={handleInputChange}
+          required
+        />
+
+        <label>Adresse :</label>
+        <input
+          type="text"
+          name="adresse"
+          value={formData.adresse}
           onChange={handleInputChange}
           required
         />
