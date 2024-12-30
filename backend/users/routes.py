@@ -63,3 +63,61 @@ def get_user_by_uid(firebase_uid):
         return jsonify(user.to_dict()), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+@users_bp.route('/users/<id>', methods=['GET'])
+def get_user_by_uid_(id):
+    print(id)
+    """
+    Récupère un utilisateur par son UID Firebase.
+    """
+    try:
+        user = User.query.filter_by(id=id).first()
+        if not user:
+            return jsonify({"error": "Utilisateur non trouvé"}), 404
+        return jsonify(user.to_dict()), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+
+@users_bp.route('/users/<id>', methods=['PUT'])
+def update_user(id):
+    """
+    Met à jour les informations d'un utilisateur par son ID.
+    """
+    try:
+        data = request.json  # Récupère les données JSON envoyées par le client
+
+        # Vérification des données reçues
+        if not data:
+            return jsonify({"error": "Aucune donnée reçue"}), 400
+
+        # Récupérer l'utilisateur existant dans la base de données
+        user = User.query.filter_by(id=id).first()
+        if not user:
+            return jsonify({"error": "Utilisateur non trouvé"}), 404
+
+        # Mettre à jour les champs modifiables
+        if 'email' in data:
+            user.email = data['email']
+        if 'nom' in data:
+            user.nom = data['nom']
+        if 'prenom' in data:
+            user.prenom = data['prenom']
+        if 'denomination' in data:
+            user.denomination = data['denomination']
+        if 'telephone' in data:
+            user.telephone = data['telephone']
+        if 'adresse' in data:
+            user.adresse = data['adresse']
+        if 'password' in data:
+            hashed_password = generate_password_hash(data['password'])
+            user.password = hashed_password
+
+        # Sauvegarder les modifications dans la base de données
+        db.session.commit()
+
+        return jsonify(user.to_dict()), 200
+
+    except Exception as e:
+        db.session.rollback()  # Annuler les modifications en cas d'erreur
+        return jsonify({"error": f"Erreur lors de la mise à jour de l'utilisateur : {str(e)}"}), 500

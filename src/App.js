@@ -152,7 +152,7 @@ const App = () => {
         {/* Page des paramètres (protégée) */}
         <Route
           path="/users/:id/settings"
-          element={<ProtectedRoute element={<CompanySettingsPage />} />}
+          element={<ProtectedRoute element={<CompanySettingsPage userId={userId}/>} />}
         />
 
         {/* Page principale des projets (protégée) */}
