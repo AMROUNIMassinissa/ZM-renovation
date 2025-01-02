@@ -6,6 +6,7 @@ import ArticlesTable from "./ArticlesTable";
 import { saveArticle, getArticles } from "../services/articleService";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faHome } from "@fortawesome/free-solid-svg-icons"; // Importer l'icône home
+import axios from "axios";
 
 const EditProjectPage = ({ onSave,userId }) => {
   const { id } = useParams(); // Récupérer l'ID du projet depuis l'URL
@@ -91,6 +92,54 @@ const EditProjectPage = ({ onSave,userId }) => {
     } catch (error) {
       console.error("Erreur lors de la sauvegarde de l'article :", error);
       alert("Erreur lors de la sauvegarde de l'article.");
+    }
+  };
+
+  const handleGenerateInvoice = async () => {
+    const tva = 20; // TVA de 20%
+    console.log("Invoice generated:", formData);
+
+    try {
+      const response = await axios.post(
+        "http://localhost:5000/generate-invoice",
+        {
+          invoice_number: `INV-01`,
+          issuer: {
+            name: "Votre Entreprise",
+            address: "123 Rue Exemple, Paris",
+            phone: "0123456789",
+            email: "contact@exemple.com",
+          },
+          client: {
+            name: formData.nom,
+            address: formData.adresse,
+            phone: formData.telephone,
+           email: "client@exemple.com", // Vous pouvez ajouter un champ email dans formData
+          },
+          articles: articles,
+        }, 
+        { responseType: "blob" }
+      );
+      console.log("Invoice generated:", response);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `Facture.docx`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+       console.error("Erreur lors de la génération de la facture :", error);
+      if (error.response) {
+        // La réponse du serveur est reçue, mais avec une erreur
+        console.error("Détails de l'erreur serveur :", error.response.data);
+      } else if (error.request) {
+        // La requête a été envoyée, mais il n'y a pas de réponse
+        console.error("Pas de réponse du serveur :", error.request);
+      } else {
+        console.error("Erreur lors de la configuration de la requête :", error.message);
+      }
+      alert("Erreur lors de la génération de la facture.");
     }
   };
 
@@ -202,6 +251,20 @@ const EditProjectPage = ({ onSave,userId }) => {
         onSaveArticle={saveSingleArticle}
         projectId={id}
       />
+       <button
+        type="button"
+        onClick={handleGenerateInvoice}
+        style={{
+          backgroundColor: "blue",
+          color: "white",
+          padding: "10px 20px",
+          borderRadius: "5px",
+          cursor: "pointer",
+          marginTop: "20px",
+        }}
+      >
+        Générer une Facture
+      </button>
     </div>
   );
 };

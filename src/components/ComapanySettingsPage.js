@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { fetchUserDetails, updateUserDetails } from "../services/userService"; // Backend services
-import { updateEmail, updatePassword } from "firebase/auth"; // Firebase auth services
+import { updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth"; // Firebase auth services
 import { auth } from "../services/firebase";
 import "./SettingsPage.css";
 
 const CompanySettingsPage = ({ userId }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-
   const [formData, setFormData] = useState({
     id: "",
     email: "",
@@ -17,8 +16,10 @@ const CompanySettingsPage = ({ userId }) => {
     denomination: "",
     telephone: "",
     adresse: "",
-    password: "", // Pour le mot de passe
+    password: "", // Nouveau mot de passe
   });
+  const [currentPassword, setCurrentPassword] = useState(""); // Pour la re-authentification
+  const [showModal, setShowModal] = useState(false); // Pour afficher la fenêtre modale
 
   // Récupérer les données utilisateur
   useEffect(() => {
@@ -57,27 +58,39 @@ const CompanySettingsPage = ({ userId }) => {
     setFormData({ ...formData, [name]: value });
   };
 
-  // Sauvegarde des modifications
-  const handleSave = async () => {
+  // Ouvrir la fenêtre modale pour la re-authentification
+  const handleSave = () => {
+    setShowModal(true);
+  };
+
+  // Vérification du mot de passe actuel et sauvegarde
+  const handleConfirmSave = async () => {
     try {
+      // Re-authentification de l'utilisateur
+      const credential = EmailAuthProvider.credential(auth.currentUser.email, currentPassword);
+      await reauthenticateWithCredential(auth.currentUser, credential);
+
+      // Mise à jour des informations utilisateur
       const { email, password, ...otherDetails } = formData;
-      console.log("Nouvelles informations utilisateur :", auth.currentUser.email);
-      // 1. Mise à jour dans Firebase
+
+      // Mise à jour de l'email
       if (email !== auth.currentUser.email) {
-          await updateEmail(auth.currentUser, email);
+        await updateEmail(auth.currentUser, email);
       }
+
+      // Mise à jour du mot de passe (si un nouveau mot de passe est saisi)
       if (password) {
         await updatePassword(auth.currentUser, password);
       }
 
-      // 2. Mise à jour dans le backend
-      await updateUserDetails(userId, formData);
-      console.log("Informations utilisateur !",formData);
+      // Mise à jour des autres détails dans le backend
+      await updateUserDetails(userId, { ...otherDetails, email,password });
 
       alert("Informations utilisateur mises à jour avec succès !");
+      setShowModal(false); // Fermer la fenêtre modale
     } catch (error) {
       console.error("Erreur lors de la mise à jour des informations utilisateur :", error);
-      alert("Erreur lors de la mise à jour des informations utilisateur.");
+      alert("Erreur lors de la mise à jour. Assurez-vous que votre mot de passe est correct.");
     }
   };
 
@@ -178,7 +191,7 @@ const CompanySettingsPage = ({ userId }) => {
           />
         </div>
 
-        {/* Mot de passe */}
+        {/* Nouveau mot de passe */}
         <div>
           <label>Nouveau mot de passe :</label>
           <input
@@ -194,6 +207,23 @@ const CompanySettingsPage = ({ userId }) => {
           Sauvegarder
         </button>
       </form>
+
+      {/* Fenêtre modale pour la re-authentification */}
+      {showModal && (
+        <div className="modal-setting">
+          <div className="modal-content-setting">
+            <h3>Vérification du mot de passe</h3>
+            <label>Mot de passe actuel :</label>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+            />
+            <button onClick={handleConfirmSave}>Confirmer</button>
+            <button onClick={() => setShowModal(false)}>Annuler</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

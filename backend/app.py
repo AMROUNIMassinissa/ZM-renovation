@@ -4,7 +4,7 @@ from models import db
 from projects.routes import projects_bp
 from articles.routes import articles_bp
 from users.routes import users_bp
-
+from Facture.facture import facture_bp
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:3000"])
 
@@ -17,6 +17,7 @@ db.init_app(app)
 app.register_blueprint(projects_bp)
 app.register_blueprint(articles_bp)
 app.register_blueprint(users_bp)
+app.register_blueprint(facture_bp)
 
 if __name__ == '__main__':
     with app.app_context():
